@@ -7,7 +7,12 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-public class SudokuInitialPositionsGenerator implements PositionsGenerator {
+public class GivenPositionsGenerator implements PositionsGenerator {
+    private int sudokuSize;
+    public GivenPositionsGenerator(int sudokuSize) {
+        this.sudokuSize = sudokuSize;
+    }
+
     @Override
     public Collection<Position> generate() {
         Set<Position> positions = new HashSet<>();
@@ -22,12 +27,14 @@ public class SudokuInitialPositionsGenerator implements PositionsGenerator {
     }
 
     private Position getRandomSudokuPosition() {
-        int x = (((int) (Math.random() * 1000)) % 9);
-        int y = (((int) (Math.random() * 1000)) % 9);
+        int x = (((int) (Math.random() * 1000)) % sudokuSize);
+        int y = (((int) (Math.random() * 1000)) % sudokuSize);
         return new Position(x, y);
     }
 
     private int getPositionCount() {
-        return 32 + (((int) (Math.random() * 1000)) % 32);
+        int minimumCount = (sudokuSize*sudokuSize - (int)(sudokuSize / 0.5625)) / 2;
+
+        return minimumCount + (((int) (Math.random() * 1000)) % minimumCount);
     }
 }
