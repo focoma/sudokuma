@@ -3,7 +3,7 @@ package net.claves.games;
 public abstract class Grid<T> {
     protected Item[][] itemsByRow;
     protected Item[][] itemsByColumn;
-    protected int size;
+    protected final int size;
 
     public Grid(int size) {
         this.size = size;
@@ -31,7 +31,11 @@ public abstract class Grid<T> {
         return item;
     }
 
-    public Item remove(Position position) {
+    public Item<T> get(int x, int y) {
+        return get(new Position(x, y));
+    }
+
+    protected Item remove(Position position) {
         Item oldItem = get(position);
         put(position, getEmptyItem());
         return oldItem;
@@ -45,8 +49,12 @@ public abstract class Grid<T> {
         return itemsByRow[row];
     }
 
-    public Item[] getColumn(int columne) {
-        return itemsByColumn[columne];
+    public Item[] getColumn(int column) {
+        return itemsByColumn[column];
+    }
+
+    public Item[][] getItems() {
+        return itemsByRow;
     }
 
     public static class Item<T> {

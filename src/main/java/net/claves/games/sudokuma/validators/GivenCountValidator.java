@@ -1,7 +1,8 @@
-package net.claves.games.sudokuma;
+package net.claves.games.sudokuma.validators;
 
 import net.claves.games.Grid;
-import net.claves.games.Position;
+import net.claves.games.sudokuma.SudokuGrid;
+import net.claves.games.sudokuma.Validator;
 
 public class GivenCountValidator implements Validator {
 
@@ -18,6 +19,6 @@ public class GivenCountValidator implements Validator {
             }
         }
 
-        return givenCount > 16;
+        return givenCount > (int)(size / 0.5625);
     }
 }

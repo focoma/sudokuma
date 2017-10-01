@@ -3,6 +3,8 @@ package net.claves.games.sudokuma;
 import net.claves.games.Grid;
 import net.claves.games.Position;
 import net.claves.games.PositionsGenerator;
+import net.claves.games.sudokuma.validators.GivenCountValidator;
+import net.claves.games.sudokuma.validators.UniqueItemsValidator;
 
 import java.util.*;
 
@@ -12,9 +14,21 @@ public class SudokuGrid extends Grid<Integer> {
     private int regionSize;
 
     private List<Validator> validators;
+    private List<Integer> validValues;
+
+    private Solver solver;
 
     public SudokuGrid(int size) {
         super(size);
+
+        validators = new ArrayList<>();
+        validators.add(new GivenCountValidator());
+        validators.add(new UniqueItemsValidator());
+
+        validValues = new ArrayList<>();
+        for (int i = 1; i <= size; i++) {
+            validValues.add(i);
+        }
 
         int sqrt = (int) Math.sqrt(size);
         if (sqrt * sqrt == size) {
@@ -23,6 +37,22 @@ public class SudokuGrid extends Grid<Integer> {
         if (regionSize > 0) {
             itemsByReqion = new Item[size][size];
         }
+    }
+
+    public List<Validator> getValidators() {
+        return validators;
+    }
+
+    public void setValidators(List<Validator> validators) {
+        this.validators = validators;
+    }
+
+    public Solver getSolver() {
+        return solver;
+    }
+
+    public void setSolver(Solver solver) {
+        this.solver = solver;
     }
 
     @Override
@@ -38,12 +68,16 @@ public class SudokuGrid extends Grid<Integer> {
 
     @Override
     protected Item<Integer> getEmptyItem() {
-        return new VariableItem(1, 9);
+        return new VariableItem(1, size);
     }
 
-    private Item[] getRegion(Position position) {
+    public Item[] getRegion(Position position) {
         return itemsByReqion
                 [(position.x / regionSize) * regionSize + (position.y / regionSize)];
+    }
+
+    public Item[] getRegion(int region) {
+        return itemsByReqion[region];
     }
 
     public static SudokuGrid newInstance() {
@@ -55,8 +89,8 @@ public class SudokuGrid extends Grid<Integer> {
 
     private void generate() {
         Collection<Position> givenPositions = getPositionsGenerator().generate();
-        for (int rowIndex = 0; rowIndex < 9; rowIndex++) {
-            for (int columnIndex = 0; columnIndex < 9; columnIndex++) {
+        for (int rowIndex = 0; rowIndex < size; rowIndex++) {
+            for (int columnIndex = 0; columnIndex < size; columnIndex++) {
                 Integer randomValue = generateValueFor(new Position(rowIndex, columnIndex));
                 Item<Integer> gridItem;
                 if (givenPositions.contains(new Position(rowIndex, columnIndex))) {
@@ -70,8 +104,8 @@ public class SudokuGrid extends Grid<Integer> {
             }
         }
 
-        for (int rowIndex = 0; rowIndex < 9; rowIndex++) {
-            for (int columnIndex = 0; columnIndex < 9; columnIndex++) {
+        for (int rowIndex = 0; rowIndex < size; rowIndex++) {
+            for (int columnIndex = 0; columnIndex < size; columnIndex++) {
                 if (!givenPositions.contains(new Position(rowIndex, columnIndex))) {
                     remove(new Position(rowIndex, columnIndex));
                 }
@@ -97,7 +131,6 @@ public class SudokuGrid extends Grid<Integer> {
     }
 
     protected List<Integer> getValidValuesFor(Position position) {
-        List<Integer> validValues = new ArrayList<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
         for (Item<Integer> gridItem : itemsByRow[position.x]) {
             if (gridItem != null) {
                 validValues.remove(gridItem.getValue());
@@ -117,6 +150,21 @@ public class SudokuGrid extends Grid<Integer> {
         }
 
         return validValues;
+    }
+
+    @Override
+    public Object clone() {
+        return newInstance(getIntegerArray());
+    }
+
+    private Integer[][] getIntegerArray() {
+        Integer[][] itemsArray = new Integer[size][size];
+        for (int row = 0; row < size; row ++) {
+            for (int column = 0; column < size; column++) {
+                itemsArray[row][column] = get(row, column).getValue();
+            }
+        }
+        return itemsArray;
     }
 
     public static SudokuGrid newInstance(Integer[][] squareGrid) {
@@ -143,36 +191,21 @@ public class SudokuGrid extends Grid<Integer> {
         }
     }
 
-    public Integer getItem(int row, int column) {
-        return getGridItem(row, column).getValue();
+    public boolean hasRegions() {
+        return regionSize > 0;
     }
 
     public boolean isValid() {
-        for (Item[] row : itemsByRow) {
-            if (!itemsAreUnique(row)) {
+        for (Validator validator : validators) {
+            if (!validator.isValid(this)) {
                 return false;
             }
         }
-
-        for (Item[] column : itemsByColumn) {
-            if (!itemsAreUnique(column)) {
-                return false;
-            }
-        }
-
         return true;
     }
 
-    private boolean itemsAreUnique(Item<Integer>[] row) {
-        List<Integer> processedValues = new ArrayList<>();
-        for (Item<Integer> gridItem : row) {
-            if (gridItem.getValue() != null && processedValues.contains(gridItem.getValue())) {
-                return false;
-            }
-            processedValues.add(gridItem.getValue());
-        }
-
-        return true;
+    public SudokuGrid solve() {
+        return solver.solve((SudokuGrid) clone());
     }
 
     public static class GivenItem extends Item<Integer> {

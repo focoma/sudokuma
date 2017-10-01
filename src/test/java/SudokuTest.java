@@ -12,7 +12,7 @@ public class SudokuTest {
         values[8] = new Integer[]{5, null, null, 9, null, 8, 3, null};
         SudokuGrid sudokuGrid = SudokuGrid.newInstance(values);
 
-        assertEquals(new Integer(9), sudokuGrid.getItem(8, 3));
+        assertEquals(new Integer(9), sudokuGrid.get(8, 3).getValue());
     }
 
     @Test
