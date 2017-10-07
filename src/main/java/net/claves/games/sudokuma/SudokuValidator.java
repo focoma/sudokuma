@@ -1,5 +1,5 @@
 package net.claves.games.sudokuma;
 
-public interface Validator {
+public interface SudokuValidator {
     boolean isValid(SudokuGrid sudokuGrid);
 }

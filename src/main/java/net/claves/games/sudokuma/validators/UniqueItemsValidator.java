@@ -2,12 +2,12 @@ package net.claves.games.sudokuma.validators;
 
 import net.claves.games.Grid;
 import net.claves.games.sudokuma.SudokuGrid;
-import net.claves.games.sudokuma.Validator;
+import net.claves.games.sudokuma.SudokuValidator;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class UniqueItemsValidator implements Validator {
+public class UniqueItemsValidator implements SudokuValidator {
 
     @Override
     public boolean isValid(SudokuGrid sudokuGrid) {
@@ -20,7 +20,7 @@ public class UniqueItemsValidator implements Validator {
             if (!isListUnique(sudokuGrid.getColumn(index))) {
                 return false;
             }
-            if (!isListUnique(sudokuGrid.getRegion(index))) {
+            if (sudokuGrid.hasRegions() && !isListUnique(sudokuGrid.getRegion(index))) {
                 return false;
             }
         }
@@ -31,7 +31,7 @@ public class UniqueItemsValidator implements Validator {
     private boolean isListUnique(Grid.Item[] list) {
         Set<Grid.Item> processedItems = new HashSet<>();
         for (Grid.Item item : list) {
-            if (!processedItems.add(item)) {
+            if (item.getValue() != null && !processedItems.add(item)) {
                 return false;
             }
         }

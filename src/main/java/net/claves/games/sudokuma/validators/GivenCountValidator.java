@@ -2,9 +2,9 @@ package net.claves.games.sudokuma.validators;
 
 import net.claves.games.Grid;
 import net.claves.games.sudokuma.SudokuGrid;
-import net.claves.games.sudokuma.Validator;
+import net.claves.games.sudokuma.SudokuValidator;
 
-public class GivenCountValidator implements Validator {
+public class GivenCountValidator implements SudokuValidator {
 
     @Override
     public boolean isValid(SudokuGrid sudokuGrid) {

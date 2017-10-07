@@ -3,7 +3,9 @@ package net.claves.games.sudokuma;
 import net.claves.games.Grid;
 import net.claves.games.Position;
 import net.claves.games.PositionsGenerator;
+import net.claves.games.sudokuma.solvers.SolverImpl;
 import net.claves.games.sudokuma.validators.GivenCountValidator;
+import net.claves.games.sudokuma.validators.LegalValueManager;
 import net.claves.games.sudokuma.validators.UniqueItemsValidator;
 
 import java.util.*;
@@ -13,45 +15,45 @@ public class SudokuGrid extends Grid<Integer> {
 
     private int regionSize;
 
-    private List<Validator> validators;
-    private List<Integer> validValues;
+    private List<SudokuValidator> validators;
+    private LegalValueManager legalValueManager;
 
-    private Solver solver;
+    private SudokuSolver solver;
 
     public SudokuGrid(int size) {
         super(size);
 
-        validators = new ArrayList<>();
+        List<SudokuValidator> validators = new ArrayList<>();
         validators.add(new GivenCountValidator());
         validators.add(new UniqueItemsValidator());
+        legalValueManager = new LegalValueManager(size);
+        validators.add(legalValueManager);
+        setValidators(validators);
 
-        validValues = new ArrayList<>();
-        for (int i = 1; i <= size; i++) {
-            validValues.add(i);
-        }
+        setSolver(new SolverImpl());
 
-        int sqrt = (int) Math.sqrt(size);
-        if (sqrt * sqrt == size) {
+        int sqrt = (int) Math.sqrt(getSize());
+        if (sqrt * sqrt == getSize()) {
             regionSize = sqrt;
         }
-        if (regionSize > 0) {
-            itemsByReqion = new Item[size][size];
+        if (hasRegions()) {
+            itemsByReqion = new Item[getSize()][getSize()];
         }
     }
 
-    public List<Validator> getValidators() {
+    public List<SudokuValidator> getValidators() {
         return validators;
     }
 
-    public void setValidators(List<Validator> validators) {
+    public void setValidators(List<SudokuValidator> validators) {
         this.validators = validators;
     }
 
-    public Solver getSolver() {
+    public SudokuSolver getSolver() {
         return solver;
     }
 
-    public void setSolver(Solver solver) {
+    public void setSolver(SudokuSolver solver) {
         this.solver = solver;
     }
 
@@ -67,8 +69,8 @@ public class SudokuGrid extends Grid<Integer> {
     }
 
     @Override
-    protected Item<Integer> getEmptyItem() {
-        return new VariableItem(1, size);
+    protected Item<Integer> createEmptyItem(Position position) {
+        return new VariableItem(1, getSize(), position);
     }
 
     public Item[] getRegion(Position position) {
@@ -89,23 +91,31 @@ public class SudokuGrid extends Grid<Integer> {
 
     private void generate() {
         Collection<Position> givenPositions = getPositionsGenerator().generate();
-        for (int rowIndex = 0; rowIndex < size; rowIndex++) {
-            for (int columnIndex = 0; columnIndex < size; columnIndex++) {
-                Integer randomValue = generateValueFor(new Position(rowIndex, columnIndex));
+        for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
+            for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
+                Position position = new Position(rowIndex, columnIndex);
+                Integer randomValue = generateValueFor(position);
+                if (randomValue == null) {
+                    clear();
+                    rowIndex = 0;
+                    columnIndex = -1;
+                    continue;
+                }
+
                 Item<Integer> gridItem;
-                if (givenPositions.contains(new Position(rowIndex, columnIndex))) {
-                    gridItem = new GivenItem(randomValue);
+                if (givenPositions.contains(position)) {
+                    gridItem = new GivenItem(randomValue, position);
                 } else {
-                    gridItem = getEmptyItem();
+                    gridItem = createEmptyItem(position);
                     gridItem.setValue(randomValue);
                 }
 
-                put(new Position(rowIndex, columnIndex), gridItem);
+                put(position, gridItem);
             }
         }
 
-        for (int rowIndex = 0; rowIndex < size; rowIndex++) {
-            for (int columnIndex = 0; columnIndex < size; columnIndex++) {
+        for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
+            for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
                 if (!givenPositions.contains(new Position(rowIndex, columnIndex))) {
                     remove(new Position(rowIndex, columnIndex));
                 }
@@ -113,35 +123,44 @@ public class SudokuGrid extends Grid<Integer> {
         }
     }
 
+    @Override
+    protected void clear() {
+        super.clear();
+        if (hasRegions()) {
+            itemsByReqion = new Item[getSize()][getSize()];
+        }
+    }
+
     protected PositionsGenerator getPositionsGenerator() {
-        return new GivenPositionsGenerator(size);
+        return new GivenPositionsGenerator(getSize());
     }
 
     protected Integer generateValueFor(Position position) {
-        List<Integer> validValuesForPosition = getValidValuesFor(position);
+        List<Integer> validValuesForPosition = new ArrayList<>(getValidValuesFor(position));
         if (validValuesForPosition.isEmpty()) {
             return null;
         }
 
-        return validValuesForPosition.get((((int) (Math.random() * 1000)) % validValuesForPosition.size()));
+        return validValuesForPosition.get((((int) (Math.random() * getSize())) % validValuesForPosition.size()));
     }
 
     private Item<Integer> getGridItem(int row, int column) {
-        return itemsByRow[row][column];
+        return getRow(row)[column];
     }
 
-    protected List<Integer> getValidValuesFor(Position position) {
-        for (Item<Integer> gridItem : itemsByRow[position.x]) {
+    protected Set<Integer> getValidValuesFor(Position position) {
+        Set<Integer> validValues = legalValueManager.getLegalValues();
+        for (Item<Integer> gridItem : getRow(position.x)) {
             if (gridItem != null) {
                 validValues.remove(gridItem.getValue());
             }
         }
-        for (Item<Integer> gridItem : itemsByColumn[position.y]) {
+        for (Item<Integer> gridItem : getColumn(position.y)) {
             if (gridItem != null) {
                 validValues.remove(gridItem.getValue());
             }
         }
-        if (regionSize > 0) {
+        if (hasRegions()) {
             for (Item gridItem : getRegion(position)) {
                 if (gridItem != null) {
                     validValues.remove(gridItem.getValue());
@@ -158,9 +177,9 @@ public class SudokuGrid extends Grid<Integer> {
     }
 
     private Integer[][] getIntegerArray() {
-        Integer[][] itemsArray = new Integer[size][size];
-        for (int row = 0; row < size; row ++) {
-            for (int column = 0; column < size; column++) {
+        Integer[][] itemsArray = new Integer[getSize()][getSize()];
+        for (int row = 0; row < getSize(); row ++) {
+            for (int column = 0; column < getSize(); column++) {
                 itemsArray[row][column] = get(row, column).getValue();
             }
         }
@@ -182,11 +201,14 @@ public class SudokuGrid extends Grid<Integer> {
         for (int rowIndex = 0; rowIndex < grid.length; rowIndex++) {
             for (int columnIndex = 0; columnIndex < grid[rowIndex].length; columnIndex++) {
                 Integer value = grid[rowIndex][columnIndex];
-                if (value != null && (value < 1 || value > size)) {
-                    throw new IllegalArgumentException("Values can only be from 1 to " + size + ".");
+                if (!legalValueManager.isValueLegal(value)) {
+                    value = null;
                 }
 
-                put(new Position(rowIndex, columnIndex), new GivenItem(value));
+                Position position = new Position(rowIndex, columnIndex);
+                put(position, (value == null) ?
+                        createEmptyItem(position) :
+                        new GivenItem(value, position));
             }
         }
     }
@@ -196,7 +218,7 @@ public class SudokuGrid extends Grid<Integer> {
     }
 
     public boolean isValid() {
-        for (Validator validator : validators) {
+        for (SudokuValidator validator : validators) {
             if (!validator.isValid(this)) {
                 return false;
             }
@@ -208,9 +230,36 @@ public class SudokuGrid extends Grid<Integer> {
         return solver.solve((SudokuGrid) clone());
     }
 
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("{\n");
+        for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
+            stringBuilder.append("    {");
+            for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
+                Item<Integer> item = get(rowIndex, columnIndex);
+                if (item.getValue() == null) {
+                    stringBuilder.append("0");
+                } else {
+                    stringBuilder.append(item.getValue());
+                }
+                if (columnIndex < getSize() - 1) {
+                    stringBuilder.append(", ");
+                }
+            }
+            stringBuilder.append("}");
+            if (rowIndex < getSize() - 1) {
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("\n");
+        }
+        stringBuilder.append("}");
+        return stringBuilder.toString();
+    }
+
     public static class GivenItem extends Item<Integer> {
-        public GivenItem(Integer value) {
-            super(value);
+        public GivenItem(Integer value, Position position) {
+            super(value, position);
         }
 
         @Override
@@ -222,16 +271,16 @@ public class SudokuGrid extends Grid<Integer> {
     public static class VariableItem extends Item<Integer> {
         private Set<Integer> possibilities;
 
-        public VariableItem(int start, int end) {
-            super(null);
+        public VariableItem(int start, int end, Position position) {
+            super(null, position);
             possibilities = new HashSet<>();
             for (int i = start; i <= end; i++) {
                 possibilities.add(i);
             }
         }
 
-        public void removePossibility(Integer possibility) {
-            possibilities.remove(possibility);
+        public boolean removePossibility(Integer possibility) {
+            return possibilities.remove(possibility);
         }
 
         public Set<Integer> getPossibilities() {

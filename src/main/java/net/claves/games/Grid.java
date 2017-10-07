@@ -1,9 +1,9 @@
 package net.claves.games;
 
 public abstract class Grid<T> {
-    protected Item[][] itemsByRow;
-    protected Item[][] itemsByColumn;
-    protected final int size;
+    private Item[][] itemsByRow;
+    private Item[][] itemsByColumn;
+    private final int size;
 
     public Grid(int size) {
         this.size = size;
@@ -11,7 +11,12 @@ public abstract class Grid<T> {
         itemsByColumn = new Item[size][size];
     }
 
-    protected abstract Item<T> getEmptyItem();
+    protected void clear() {
+        itemsByRow = new Item[size][size];
+        itemsByColumn = new Item[size][size];
+    }
+
+    protected abstract Item<T> createEmptyItem(Position position);
 
     public Item<T> put(Position position, Item<T> gridItem) {
         if (position.x >= size || position.y >= size || position.x < 0 || position.y < 0) {
@@ -26,7 +31,7 @@ public abstract class Grid<T> {
     public Item<T> get(Position position) {
         Item<T> item = itemsByRow[position.x][position.y];
         if (item == null) {
-            return put(position, getEmptyItem());
+            return put(position, createEmptyItem(position));
         }
         return item;
     }
@@ -37,7 +42,7 @@ public abstract class Grid<T> {
 
     protected Item remove(Position position) {
         Item oldItem = get(position);
-        put(position, getEmptyItem());
+        put(position, createEmptyItem(position));
         return oldItem;
     }
 
@@ -57,11 +62,34 @@ public abstract class Grid<T> {
         return itemsByRow;
     }
 
+    @Override
+    public boolean equals(Object object) {
+        if (object instanceof Grid) {
+            Grid that = (Grid)object;
+            int thatSize = that.getSize();
+            if (thatSize == this.size) {
+                for (int rowIndex = 0; rowIndex < thatSize; rowIndex++) {
+                    for (int columnIndex = 0; columnIndex < thatSize; columnIndex++) {
+                        if (!this.get(rowIndex, columnIndex).equals(that.get(rowIndex, columnIndex))) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+
     public static class Item<T> {
         private T value;
+        private Position position;
 
-        public Item(T value) {
+        public Item(T value, Position position) {
             this.value = value;
+            this.position = position;
         }
 
         public T getValue() {
@@ -70,6 +98,18 @@ public abstract class Grid<T> {
 
         public void setValue(T value) {
             this.value = value;
+        }
+
+        public int getRowIndex() {
+            return position.x;
+        }
+
+        public int getColumnIndex() {
+            return position.y;
+        }
+
+        public Position getPosition() {
+            return position;
         }
 
         @Override
@@ -82,13 +122,17 @@ public abstract class Grid<T> {
             if (this == o) {
                 return true;
             }
-            if (o == null || getClass() != o.getClass()) {
+            if (o == null || !(o instanceof Item)) {
                 return false;
             }
 
-            Item item = (Item) o;
+            Item that = (Item) o;
 
-            return value != null && value.equals(item.getValue());
+            if (this.getValue() == null && that.getValue() == null) {
+                return true;
+            }
+
+            return value != null && this.getValue().equals(that.getValue());
         }
     }
 }
