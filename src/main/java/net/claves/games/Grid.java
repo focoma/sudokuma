@@ -1,6 +1,8 @@
 package net.claves.games;
 
-public abstract class Grid<T> {
+import java.util.Iterator;
+
+public abstract class Grid<T> implements Iterable<Grid.Item>{
     private Item[][] itemsByRow;
     private Item[][] itemsByColumn;
     private final int size;
@@ -14,6 +16,11 @@ public abstract class Grid<T> {
     protected void clear() {
         itemsByRow = new Item[size][size];
         itemsByColumn = new Item[size][size];
+    }
+
+    @Override
+    public Iterator<Item> iterator() {
+        return new GridIterator();
     }
 
     protected abstract Item<T> createEmptyItem(Position position);
@@ -64,15 +71,17 @@ public abstract class Grid<T> {
 
     @Override
     public boolean equals(Object object) {
+        if (object == null) {
+            return false;
+        }
         if (object instanceof Grid) {
             Grid that = (Grid)object;
             int thatSize = that.getSize();
             if (thatSize == this.size) {
-                for (int rowIndex = 0; rowIndex < thatSize; rowIndex++) {
-                    for (int columnIndex = 0; columnIndex < thatSize; columnIndex++) {
-                        if (!this.get(rowIndex, columnIndex).equals(that.get(rowIndex, columnIndex))) {
-                            return false;
-                        }
+                for (Item item : this) {
+                    Position position = item.getPosition();
+                    if (!item.equals(that.get(position))) {
+                        return false;
                     }
                 }
                 return true;
@@ -81,7 +90,14 @@ public abstract class Grid<T> {
         return false;
     }
 
-
+    @Override
+    public int hashCode() {
+        int hashCode = 0;
+        for (Item item : this) {
+            hashCode += item.hashCode();
+        }
+        return hashCode;
+    }
 
     public static class Item<T> {
         private T value;
@@ -113,26 +129,47 @@ public abstract class Grid<T> {
         }
 
         @Override
-        public int hashCode() {
-            return value != null ? value.hashCode() : 0;
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || !(o instanceof Item)) return false;
+
+            Item<?> item = (Item<?>) o;
+
+            if (value != null ? !value.equals(item.value) : item.value != null) return false;
+            return position.equals(item.position);
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || !(o instanceof Item)) {
-                return false;
+        public int hashCode() {
+            int result = value != null ? value.hashCode() : 0;
+            result = 31 * result + position.hashCode();
+            return result;
+        }
+    }
+
+    private class GridIterator implements Iterator<Item> {
+        private int x;
+        private int y;
+
+        @Override
+        public boolean hasNext() {
+            return x <= size - 1 && y <= size - 1;
+        }
+
+        @Override
+        public Item next() {
+            if (hasNext()) {
+                Item<T> next = Grid.this.get(x, y);
+                if (y < size - 1) {
+                    y++;
+                } else if (x < size) {
+                    x++;
+                    y = 0;
+                }
+                return next;
             }
 
-            Item that = (Item) o;
-
-            if (this.getValue() == null && that.getValue() == null) {
-                return true;
-            }
-
-            return value != null && this.getValue().equals(that.getValue());
+            return null;
         }
     }
 }

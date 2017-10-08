@@ -1,6 +1,11 @@
+import net.claves.games.Grid;
 import net.claves.games.sudokuma.SudokuGrid;
 import net.claves.games.sudokuma.exceptions.UnsolvableSudokuException;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -45,6 +50,28 @@ public class SudokuTest {
                         {4, 3, null, 1},
                         {3, null, 4, 2},
                         {2, 4, 1, null}
+                }
+        );
+        SudokuGrid solved = unsolved.solve();
+
+        assertEquals(SudokuGrid.newInstance(
+                new Integer[][] {
+                        {1, 2, 3, 4},
+                        {4, 3, 2, 1},
+                        {3, 1, 4, 2},
+                        {2, 4, 1, 3}
+                }
+        ), solved);
+    }
+
+    @Test
+    public void testSolveSizeFour2() {
+        SudokuGrid unsolved = SudokuGrid.newInstance(
+                new Integer[][] {
+                        {0, 0, 3, 0},
+                        {4, 3, 2, 0},
+                        {3, 1, 4, 2},
+                        {0, 0, 1, 3}
                 }
         );
         SudokuGrid solved = unsolved.solve();
@@ -126,5 +153,28 @@ public class SudokuTest {
                                 {2, 4, 1, null}
                         }
                 ));
+    }
+
+    @Test
+    public void testGridIterator() {
+        SudokuGrid grid = SudokuGrid.newInstance(
+                new Integer[][] {
+                        {1, 2, 3, 4},
+                        {4, 3, 2, 1},
+                        {3, 1, 4, 2},
+                        {2, 4, 1, 3}
+                }
+        );
+
+        List<Integer> list = Arrays.asList(1, 2, 3, 4, 4, 3, 2, 1, 3, 1, 4, 2, 2, 4, 1, 3);
+
+        Iterator<Grid.Item> gridIterator = grid.iterator();
+        Iterator listIterator = list.iterator();
+
+        while (gridIterator.hasNext() && listIterator.hasNext()) {
+            Object gridValue = gridIterator.next().getValue();
+            Object listValue = listIterator.next();
+            assertEquals(gridValue, listValue);
+        }
     }
 }

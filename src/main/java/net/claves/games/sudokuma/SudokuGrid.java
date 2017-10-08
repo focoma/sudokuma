@@ -3,7 +3,7 @@ package net.claves.games.sudokuma;
 import net.claves.games.Grid;
 import net.claves.games.Position;
 import net.claves.games.PositionsGenerator;
-import net.claves.games.sudokuma.solvers.SolverImpl;
+import net.claves.games.sudokuma.solvers.SudokuSolverImpl;
 import net.claves.games.sudokuma.validators.GivenCountValidator;
 import net.claves.games.sudokuma.validators.LegalValueManager;
 import net.claves.games.sudokuma.validators.UniqueItemsValidator;
@@ -30,7 +30,7 @@ public class SudokuGrid extends Grid<Integer> {
         validators.add(legalValueManager);
         setValidators(validators);
 
-        setSolver(new SolverImpl());
+        setSolver(new SudokuSolverImpl());
 
         int sqrt = (int) Math.sqrt(getSize());
         if (sqrt * sqrt == getSize()) {
@@ -135,7 +135,7 @@ public class SudokuGrid extends Grid<Integer> {
         return new GivenPositionsGenerator(getSize());
     }
 
-    protected Integer generateValueFor(Position position) {
+    public Integer generateValueFor(Position position) {
         List<Integer> validValuesForPosition = new ArrayList<>(getValidValuesFor(position));
         if (validValuesForPosition.isEmpty()) {
             return null;
@@ -171,8 +171,7 @@ public class SudokuGrid extends Grid<Integer> {
         return validValues;
     }
 
-    @Override
-    public Object clone() {
+    public SudokuGrid copy() {
         return newInstance(getIntegerArray());
     }
 
@@ -227,7 +226,16 @@ public class SudokuGrid extends Grid<Integer> {
     }
 
     public SudokuGrid solve() {
-        return solver.solve((SudokuGrid) clone());
+        return solver.solve(copy());
+    }
+
+    public boolean solved() {
+        for (Item item : this) {
+            if (item instanceof VariableItem && !((VariableItem) item).solved()) {
+                return false;
+            }
+        }
+        return isValid();
     }
 
     @Override
@@ -240,6 +248,42 @@ public class SudokuGrid extends Grid<Integer> {
                 Item<Integer> item = get(rowIndex, columnIndex);
                 if (item.getValue() == null) {
                     stringBuilder.append("0");
+                } else {
+                    stringBuilder.append(item.getValue());
+                }
+                if (columnIndex < getSize() - 1) {
+                    stringBuilder.append(", ");
+                }
+            }
+            stringBuilder.append("}");
+            if (rowIndex < getSize() - 1) {
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("\n");
+        }
+        stringBuilder.append("}");
+        return stringBuilder.toString();
+    }
+
+    public String toStringWithPossibilities() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("{\n");
+        for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
+            stringBuilder.append("    {");
+            for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
+                Item<Integer> item = get(rowIndex, columnIndex);
+                if (item.getValue() == null && item instanceof VariableItem) {
+                    stringBuilder.append("[");
+                    Set<Integer> possibilities = ((VariableItem) item).getPossibilities();
+                    Iterator<Integer> possibilityIterator = possibilities.iterator();
+                    for (int i = 0; i < possibilities.size(); i++) {
+                        Integer possibility = possibilityIterator.next();
+                        stringBuilder.append(possibility);
+                        if (i < possibilities.size() - 1) {
+                            stringBuilder.append("|");
+                        }
+                    }
+                    stringBuilder.append("]");
                 } else {
                     stringBuilder.append(item.getValue());
                 }
@@ -280,15 +324,24 @@ public class SudokuGrid extends Grid<Integer> {
         }
 
         public boolean removePossibility(Integer possibility) {
-            return possibilities.remove(possibility);
+            boolean removed = possibilities.remove(possibility);
+            if (solved()) {
+                setValue(possibilities.iterator().next());
+            }
+            return removed;
+        }
+
+        public void solve(Integer solution) {
+            possibilities.retainAll(Arrays.asList(solution));
+            setValue(solution);
+        }
+
+        public boolean solved() {
+            return possibilities.size() == 1 && getValue() != null;
         }
 
         public Set<Integer> getPossibilities() {
             return possibilities;
-        }
-
-        public void setPossibilities(Set<Integer> possibilities) {
-            this.possibilities = possibilities;
         }
     }
 }
