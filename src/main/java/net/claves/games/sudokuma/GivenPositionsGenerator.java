@@ -35,6 +35,7 @@ public class GivenPositionsGenerator implements PositionsGenerator {
     private int getPositionCount() {
         int minimumCount = (sudokuSize*sudokuSize - (int)(sudokuSize / 0.5625)) / 2;
 
-        return minimumCount + (((int) (Math.random() * 1000)) % minimumCount);
+        int difficulty = 31;
+        return minimumCount + (((int) (Math.random() * 1000)) % (minimumCount / ((difficulty % minimumCount) + 1)));
     }
 }

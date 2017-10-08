@@ -90,7 +90,6 @@ public class SudokuGrid extends Grid<Integer> {
     }
 
     private void generate() {
-        Collection<Position> givenPositions = getPositionsGenerator().generate();
         for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
             for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
                 Position position = new Position(rowIndex, columnIndex);
@@ -101,25 +100,43 @@ public class SudokuGrid extends Grid<Integer> {
                     columnIndex = -1;
                     continue;
                 }
-
-                Item<Integer> gridItem;
-                if (givenPositions.contains(position)) {
-                    gridItem = new GivenItem(randomValue, position);
-                } else {
-                    gridItem = createEmptyItem(position);
-                    gridItem.setValue(randomValue);
-                }
-
-                put(position, gridItem);
+                put(position, new GivenItem(randomValue, position));
             }
         }
+        SudokuGrid generated = copy();
 
-        for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
-            for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
-                if (!givenPositions.contains(new Position(rowIndex, columnIndex))) {
-                    remove(new Position(rowIndex, columnIndex));
+        while (true) {
+            Collection<Position> givenPositions = getPositionsGenerator().generate();
+            for (int rowIndex = 0; rowIndex < getSize(); rowIndex++) {
+                for (int columnIndex = 0; columnIndex < getSize(); columnIndex++) {
+                    if (!givenPositions.contains(new Position(rowIndex, columnIndex))) {
+                        remove(new Position(rowIndex, columnIndex));
+                    }
                 }
             }
+            try {
+                if (solve().solved()) {
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+            // Try again
+            copy(generated);
+        }
+    }
+
+    private void clearVariables() {
+        for (Item item : this) {
+            if (item instanceof VariableItem) {
+                remove(item.getPosition());
+            }
+        }
+    }
+
+    public void copy(SudokuGrid sudokuGrid) {
+        SudokuGrid copy = sudokuGrid.copy();
+        for (Item item : copy) {
+            put(item.getPosition(), item);
         }
     }
 
@@ -342,6 +359,10 @@ public class SudokuGrid extends Grid<Integer> {
 
         public Set<Integer> getPossibilities() {
             return possibilities;
+        }
+
+        public void setPossibilities(Set<Integer> possibilities) {
+            this.possibilities = possibilities;
         }
     }
 }

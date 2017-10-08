@@ -42,7 +42,7 @@ public class SudokuSolverImpl implements SudokuSolver {
                     if (!variableItem.solved()) {
                         Set<Integer> possibilities = new HashSet<>(variableItem.getPossibilities());
                         for (Integer guess : possibilities) {
-                            ((SudokuGrid.VariableItem) item).solve(guess);
+                            variableItem.solve(guess);
                             try {
                                 solutions.add(new SudokuSolverImpl().solve(sudokuGrid.copy()));
                             } catch (UnsolvableSudokuException ignored) {
@@ -51,6 +51,8 @@ public class SudokuSolverImpl implements SudokuSolver {
                             if (solutions.size() > 1) {
                                 throw new MultipleSolutionsException(sudokuGrid, solutions);
                             }
+                            variableItem.setPossibilities(new HashSet<>(possibilities));
+                            variableItem.setValue(null);
                         }
                     }
                 }
